@@ -44,21 +44,28 @@ let rabbit = amqp.createConnection({ host: app.get('rabbitmqIP') });
 
 const cmd_html_base ='gitbook build template/';
 const cmd_pdf_base = 'gitbook pdf template/';
+const htmlOutputDirName = 'report/';
+const pdfFileName = 'report.pdf';
 
 let generateReport = (req, cb) => {
   let cmd;
   let templateDirName = req.questionnaireID.replace(/\s/g, '').replace(/:/g, '-');
 
+  console.log(req);
   if(req.type == 'html') {
-    cmd = cmd_html_base + templateDirName + ' ' + req.outputPath + 'report/';
+    cmd = cmd_html_base + templateDirName + ' ' + req.outputPath + htmlOutputDirName;
   } else if (req.type == 'pdf' ) {
-    cmd = cmd_pdf_base + templateDirName + ' ' + req.outputPath + 'report.pdf';
+    cmd = cmd_pdf_base + templateDirName + ' ' + req.outputPath + pdfFileName;
   } else {
     return cb(new Error('Invalid Report Type'), '', 'Invalid Report Type');
   }
   //whitespace is removed according to naming convention of template directory
   // cmd += req.questionnaireID.replace(/\s/g, '').replace(/:/g, '-');
+  console.log(cmd);
   exec(cmd, (error, stdout, stderr) => {
+    console.log(error);
+    console.log(stdout);
+    console.log(stderr);
     cb(error, stdout, stderr);
   });
 };
@@ -77,7 +84,7 @@ rabbit.on('ready', () => {
       let req = {
         questionnaireID: headers.questionnaireID,
         surveyID: headers.surveyID,
-        type: headers.format,
+        type: headers.type,
         templatePath: headers.templatePath || './template/',
         outputPath: headers.outputPath || '/tmp/'
       };
@@ -87,7 +94,8 @@ rabbit.on('ready', () => {
           ret = {
             headers:{
               error: 'fail',
-              message: stderr
+              message: stderr,
+              surveyID: headers.surveyID
             }
           };
         } else {
@@ -96,6 +104,7 @@ rabbit.on('ready', () => {
               error: 'success',
               message: stdout,
               type: 'html',
+              surveyID: headers.surveyID,
               outputPath: req.outputPath
             }
           };
